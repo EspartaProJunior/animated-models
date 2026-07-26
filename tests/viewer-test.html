@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Modern model viewer test</title>
+  </head>
+  <body>
+    <pre id="result">RUNNING</pre>
+    <script src="../js/libs/three.min.js"></script>
+    <script src="../js/libs/ModelViewer.js"></script>
+    <script>
+      fetch('modern-model.json')
+        .then(function(response) { return response.text() })
+        .then(function(rawModel) {
+          var model = new JsonModel('modern-model', rawModel, [{
+            name: 'favicon',
+            texture: '../favicon.png'
+          }])
+
+          var elements = model.children[0].children
+          var modernPivot = elements[0]
+          var negativeGeometry = modernPivot.children[0].geometry
+          var legacyPivot = elements[1]
+
+          function closeTo(actual, degrees) {
+            return Math.abs(actual - degrees * Math.PI / 180) < 0.000001
+          }
+
+          if (elements.length != 2)
+            throw new Error('Expected both model elements to render.')
+          if (negativeGeometry.parameters.width >= 0)
+            throw new Error('Expected the negative cube width to be preserved.')
+          if (!closeTo(modernPivot.rotation.x, 17.5) ||
+              !closeTo(modernPivot.rotation.y, -32.25) ||
+              !closeTo(modernPivot.rotation.z, 71))
+            throw new Error('Modern XYZ rotation was not applied correctly.')
+          if (!closeTo(legacyPivot.rotation.y, -67.5))
+            throw new Error('Arbitrary legacy angle was not applied correctly.')
+
+          document.getElementById('result').textContent =
+            'PASS: negative cubes, arbitrary angles, and XYZ rotations render.'
+        })
+        .catch(function(error) {
+          document.getElementById('result').textContent = 'FAIL: ' + error.message
+        })
+    </script>
+  </body>
+</html>

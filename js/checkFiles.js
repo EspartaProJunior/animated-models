@@ -39,7 +39,7 @@ function checkModel(model) {
         errors.push('Couldn\'t find the "from" property in element "' + index + '".')
         hasFrom = false
       }
-      if (hasFrom && element['from'].length != 3) {
+      if (hasFrom && (!Array.isArray(element['from']) || element['from'].length != 3)) {
         errors.push('The "from" property in element "' + index + '" is invalid.')
         hasFrom = false
       }
@@ -48,7 +48,7 @@ function checkModel(model) {
         errors.push('Couldn\'t find the "to" property in element "' + index + '".')
         hasTo = false
       }
-      if (hasTo && element['to'].length != 3) {
+      if (hasTo && (!Array.isArray(element['to']) || element['to'].length != 3)) {
         errors.push('The "to" property in element "' + index + '" is invalid.')
         hasTo = false
       }
@@ -61,15 +61,17 @@ function checkModel(model) {
           f = element['from'][i]
         if (hasTo)
           t = element['to'][i]
-        if (hasFrom && hasTo && f > t)
-          errors.push('The "from" property is bigger than the "to" property for coordinate "' + coord + '" in element "' + index + '".')
-        if (hasFrom && f < -16)
+        if (hasFrom && (typeof f != 'number' || !isFinite(f)))
+          errors.push('The "from" property is invalid for coordinate "' + coord + '" in element "' + index + '".')
+        else if (hasFrom && f < -16)
           errors.push('The "from" property is smaller than -16 for coordinate "' + coord + '" in element "' + index + '".')
-        if (hasTo && t < -16)
-          errors.push('The "to" property is smaller than -16 for coordinate "' + coord + '" in element "' + index + '".')
-        if (hasFrom && f > 32)
+        else if (hasFrom && f > 32)
           errors.push('The "from" property is bigger than 32 for coordinate "' + coord + '" in element "' + index + '".')
-        if (hasTo && t > 32)
+        if (hasTo && (typeof t != 'number' || !isFinite(t)))
+          errors.push('The "to" property is invalid for coordinate "' + coord + '" in element "' + index + '".')
+        else if (hasTo && t < -16)
+          errors.push('The "to" property is smaller than -16 for coordinate "' + coord + '" in element "' + index + '".')
+        else if (hasTo && t > 32)
           errors.push('The "to" property is bigger than 32 for coordinate "' + coord + '" in element "' + index + '".')
       } // from to
 
@@ -80,44 +82,51 @@ function checkModel(model) {
         var rot = element.rotation
 
         var hasOrigin = true
-        var hasAxis = true
-        var hasAngle = true
+        var hasLegacyAxis = rot.hasOwnProperty('axis')
+        var hasLegacyAngle = rot.hasOwnProperty('angle')
+        var usesLegacyRotation = hasLegacyAxis || hasLegacyAngle
 
         if (!rot.hasOwnProperty('origin')) {
           errors.push('Couldn\'t find the "origin" property in "rotation" for element "' + index + '".')
           hasOrigin = false
         }
-        if (hasOrigin && rot.origin.length != 3) {
+        if (hasOrigin && (!Array.isArray(rot.origin) || rot.origin.length != 3)) {
           errors.push('The "origin" property in "rotation" for element "' + index + '" is invalid.')
           hasOrigin = false
         }
 
-        if (!rot.hasOwnProperty('axis')) {
-          errors.push('Couldn\'t find the "axis" property in "rotation" for element "' + index + '".')
-          hasAxis = false
-        }
-        if (hasAxis && ['x', 'y', 'z'].indexOf(rot.axis) == -1) {
-          errors.push('The "axis" property in "rotation" for element "' + index + '" is invalid.')
-          hasAxis = false
-        }
+        if (usesLegacyRotation) {
+          if (!hasLegacyAxis) {
+            errors.push('Couldn\'t find the "axis" property in "rotation" for element "' + index + '".')
+          } else if (['x', 'y', 'z'].indexOf(rot.axis) == -1) {
+            errors.push('The "axis" property in "rotation" for element "' + index + '" is invalid.')
+          }
 
-        if (!rot.hasOwnProperty('angle')) {
-          errors.push('Couldn\'t find the "angle" property in "rotation" for element "' + index + '".')
-          hasAngle = false
-        }
-        if (hasAngle && [-45, -22.5, 0, 22.5, 45].indexOf(rot.angle) == -1) {
-          errors.push('The "angle" property in "rotation" for element "' + index + '" is invalid.')
-          hasAngle = false
+          if (!hasLegacyAngle) {
+            errors.push('Couldn\'t find the "angle" property in "rotation" for element "' + index + '".')
+          } else if (typeof rot.angle != 'number' || !isFinite(rot.angle)) {
+            errors.push('The "angle" property in "rotation" for element "' + index + '" is invalid.')
+          }
+        } else {
+          for (var i = 0; i < 3; i++) {
+            var axis = ['x', 'y', 'z'][i]
+            if (rot.hasOwnProperty(axis) && (typeof rot[axis] != 'number' || !isFinite(rot[axis]))) {
+              errors.push('The "' + axis + '" property in "rotation" for element "' + index + '" is invalid.')
+            }
+          }
         }
 
         if (hasOrigin) {
           for (var i = 0; i < 3; i++) {
             var coord = ['x', 'y', 'z'][i]
-            var o = rot.origin
-            if (o < -16)
+            var o = rot.origin[i]
+            if (typeof o != 'number' || !isFinite(o)) {
+              errors.push('The "origin" property is invalid for coordinate "' + coord + '" in "rotation" for element "' + index + '".')
+            } else if (o < -16) {
               errors.push('The "origin" property is smaller than -16 for coordinate "' + coord + '" in "rotation" for element "' + index + '".')
-            if (o > 32)
+            } else if (o > 32) {
               errors.push('The "origin" property is bigger than 32 for coordinate "' + coord + '" in "rotation" for element "' + index + '".')
+            }
           }
         }
 

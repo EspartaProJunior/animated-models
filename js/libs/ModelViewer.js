@@ -627,12 +627,10 @@ function JsonModel(name, rawModel, texturesReference, clipUVs) {
     for (var i = 0; i < 3; i++) {
       var f = element['from'][i]
       var t = element['to'][i]
-      if (typeof f != 'number' || f < -16)
+      if (typeof f != 'number' || !isFinite(f) || f < -16 || f > 32)
         throw new Error('"from" property for element "' + index + '" is invalid (got "' + f + '" for coordinate "' + ['x', 'y', 'z'][i] + '").')
-      if (typeof t != 'number' || t > 32)
+      if (typeof t != 'number' || !isFinite(t) || t < -16 || t > 32)
         throw new Error('"to" property for element "' + index + '" is invalid (got "' + t + '" for coordinate "' + ['x', 'y', 'z'][i] + '").')
-      if (t - f < 0)
-        throw new Error('"from" property is bigger than "to" property for coordinate "' + ['x', 'y', 'z'][i] + '" in element "' + index + '".')
     }
 
 
@@ -653,7 +651,11 @@ function JsonModel(name, rawModel, texturesReference, clipUVs) {
 
     var fix = 0.001 // if a value happens to be 0, the geometry becomes a plane and will have 4 vertices instead of 12.
 
-    var geometry = new THREE.BoxGeometry(width + fix, height + fix, length + fix)
+    var geometry = new THREE.BoxGeometry(
+      width == 0 ? fix : width + (width < 0 ? -fix : fix),
+      height == 0 ? fix : height + (height < 0 ? -fix : fix),
+      length == 0 ? fix : length + (length < 0 ? -fix : fix)
+    )
     geometry.faceVertexUvs[0] = []
 
 
@@ -797,18 +799,7 @@ function JsonModel(name, rawModel, texturesReference, clipUVs) {
       if (!(element.rotation.origin.length == 3))
         throw new Error('"origin" property in "rotation" for element "' + index + '" is invalid.')
 
-      if (!element.rotation.hasOwnProperty('axis'))
-        throw new Error('Couldn\'t find "axis" property in "rotation" for element "' + index + '".')
-      if (!((['x', 'y', 'z']).indexOf(element.rotation.axis) >= 0))
-        throw new Error('"axis" property in "rotation" for element "' + index + '" is invalid.')
-
-      if (!element.rotation.hasOwnProperty('angle'))
-        throw new Error('Couldn\'t find "angle" property in "rotation" for element "' + index + '".')
-      if (!(([45, 22.5, 0, -22.5, -45]).indexOf(element.rotation.angle) >= 0))
-        throw new Error('"angle" property in "rotation" for element "' + index + '" is invalid.')
-
-
-      // get origin, axis and angle
+      // get origin and angles
 
       var rotationOrigin = {
         x: element.rotation.origin[0] - 8,
@@ -816,8 +807,39 @@ function JsonModel(name, rawModel, texturesReference, clipUVs) {
         z: element.rotation.origin[2] - 8
       }
 
-      var axis = element.rotation.axis
-      var angle = element.rotation.angle
+      for (var i = 0; i < 3; i++) {
+        var value = element.rotation.origin[i]
+        if (typeof value != 'number' || !isFinite(value) || value < -16 || value > 32)
+          throw new Error('"origin" property in "rotation" for element "' + index + '" is invalid (got "' + value + '" for coordinate "' + ['x', 'y', 'z'][i] + '").')
+      }
+
+      var rotation = {x: 0, y: 0, z: 0}
+      var hasLegacyAxis = element.rotation.hasOwnProperty('axis')
+      var hasLegacyAngle = element.rotation.hasOwnProperty('angle')
+
+      // Legacy axis/angle takes precedence when present, matching Minecraft.
+      if (hasLegacyAxis || hasLegacyAngle) {
+        if (!hasLegacyAxis)
+          throw new Error('Couldn\'t find "axis" property in "rotation" for element "' + index + '".')
+        if (!((['x', 'y', 'z']).indexOf(element.rotation.axis) >= 0))
+          throw new Error('"axis" property in "rotation" for element "' + index + '" is invalid.')
+        if (!hasLegacyAngle)
+          throw new Error('Couldn\'t find "angle" property in "rotation" for element "' + index + '".')
+        if (typeof element.rotation.angle != 'number' || !isFinite(element.rotation.angle))
+          throw new Error('"angle" property in "rotation" for element "' + index + '" is invalid.')
+
+        rotation[element.rotation.axis] = element.rotation.angle
+      } else {
+        for (var i = 0; i < 3; i++) {
+          var axis = ['x', 'y', 'z'][i]
+          if (element.rotation.hasOwnProperty(axis)) {
+            var angle = element.rotation[axis]
+            if (typeof angle != 'number' || !isFinite(angle))
+              throw new Error('"' + axis + '" property in "rotation" for element "' + index + '" is invalid.')
+            rotation[axis] = angle
+          }
+        }
+      }
 
 
       // create pivot
@@ -839,12 +861,12 @@ function JsonModel(name, rawModel, texturesReference, clipUVs) {
 
       // rotate pivot
 
-      if (axis == 'x')
-        pivot.rotateX(angle * Math.PI/180)
-      else if (axis == 'y')
-        pivot.rotateY(angle * Math.PI/180)
-      else if (axis == 'z')
-        pivot.rotateZ(angle * Math.PI/180)
+      pivot.rotation.set(
+        rotation.x * Math.PI/180,
+        rotation.y * Math.PI/180,
+        rotation.z * Math.PI/180,
+        'XYZ'
+      )
 
 
       // add pivot
