@@ -33,6 +33,7 @@ var modal = {
       ;(function(file) {
 
         var name = file.name
+        var resourcePath = (file.webkitRelativePath || file.name).replace(/\\/g, '/')
 
         var type
         if (name.match(/\.json$/))
@@ -71,10 +72,11 @@ var modal = {
 
             var img = new Image()
             img.src = result
-            textures[name] = {
+            textures[resourcePath] = {
               errors: checkTexture(img),
               used: false,
               contextErrors: [],
+              path: resourcePath,
               data: img,
               raw: result
             }

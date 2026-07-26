@@ -70,4 +70,40 @@ assert.deepStrictEqual(
   'incomplete legacy rotations should remain invalid'
 )
 
+const textureFixtures = {
+  'pack/assets/minecraft/textures/block/stone.png': {
+    path: 'pack/assets/minecraft/textures/block/stone.png'
+  },
+  'pack/assets/custom/textures/entity/creature.png': {
+    path: 'pack/assets/custom/textures/entity/creature.png'
+  }
+}
+
+assert.strictEqual(
+  context.findTextureKey('minecraft:block/stone', textureFixtures),
+  'pack/assets/minecraft/textures/block/stone.png',
+  'textures should resolve from resource-pack folders outside item/'
+)
+
+assert.strictEqual(
+  context.findTextureKey('custom:entity/creature', textureFixtures),
+  'pack/assets/custom/textures/entity/creature.png',
+  'namespaced textures should resolve from arbitrary texture folders'
+)
+
+assert.strictEqual(
+  context.findTextureKey('item/creature', textureFixtures),
+  'pack/assets/custom/textures/entity/creature.png',
+  'a unique texture basename should work even when its folder differs from the model reference'
+)
+
+assert.strictEqual(
+  context.resolveModelTextureReference({
+    layer0: 'custom:block/stone',
+    particle: '#layer0'
+  }, 'particle'),
+  'custom:block/stone',
+  'indirect texture references should resolve'
+)
+
 console.log('model format tests passed')

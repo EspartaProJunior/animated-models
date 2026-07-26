@@ -1,5 +1,3 @@
-
-
 function checkModel(model) {
 
   var errors = []
@@ -236,6 +234,122 @@ function checkTexture(img) {
 
 
 
+function normalizeTexturePath(path) {
+
+  if (typeof path != 'string')
+    return ''
+
+  return path
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\/+/, '')
+    .replace(/^\/+/, '')
+    .replace(/\/+/g, '/')
+    .replace(/\.png$/i, '')
+
+}
+
+
+
+function texturePathCandidates(path) {
+
+  var normalized = normalizeTexturePath(path)
+  var candidates = []
+
+  function add(candidate) {
+    candidate = normalizeTexturePath(candidate)
+    if (candidate && candidates.indexOf(candidate) == -1)
+      candidates.push(candidate)
+  }
+
+  if (!normalized)
+    return candidates
+
+  var assetsMatch = normalized.match(/(?:^|\/)assets\/([^/]+)\/textures\/(.+)$/i)
+  if (assetsMatch) {
+    add(assetsMatch[1] + ':' + assetsMatch[2])
+    add(assetsMatch[2])
+  } else {
+    add(normalized)
+
+    var texturesIndex = normalized.toLowerCase().lastIndexOf('/textures/')
+    if (texturesIndex >= 0)
+      add(normalized.substr(texturesIndex + '/textures/'.length))
+
+    var namespaceIndex = normalized.indexOf(':')
+    if (namespaceIndex >= 0)
+      add(normalized.substr(namespaceIndex + 1))
+  }
+
+  var pathOnly = candidates.length > 0 ? candidates[candidates.length - 1] : normalized
+  var parts = pathOnly.split('/')
+  add(parts[parts.length - 1])
+
+  return candidates
+
+}
+
+
+
+function resolveModelTextureReference(modelTextures, textureReference) {
+
+  var value = modelTextures[textureReference]
+  var visited = {}
+
+  while (typeof value == 'string' && value.charAt(0) == '#') {
+
+    var referencedName = value.substr(1)
+    if (visited[referencedName] || !modelTextures.hasOwnProperty(referencedName))
+      return ''
+
+    visited[referencedName] = true
+    value = modelTextures[referencedName]
+
+  }
+
+  return typeof value == 'string' ? value : ''
+
+}
+
+
+
+function findTextureKey(textureReference, textures) {
+
+  var referenceCandidates = texturePathCandidates(textureReference)
+  var textureKeys = Object.keys(textures)
+  var bestScore = Infinity
+  var matches = []
+
+  for (var i = 0; i < textureKeys.length; i++) {
+
+    var key = textureKeys[i]
+    var texture = textures[key]
+    var filePath = texture && texture.path ? texture.path : key
+    var fileCandidates = texturePathCandidates(filePath)
+    var score = Infinity
+
+    for (var r = 0; r < referenceCandidates.length; r++) {
+      for (var f = 0; f < fileCandidates.length; f++) {
+        if (referenceCandidates[r].toLowerCase() == fileCandidates[f].toLowerCase())
+          score = Math.min(score, r * 100 + f)
+      }
+    }
+
+    if (score < bestScore) {
+      bestScore = score
+      matches = [key]
+    } else if (score == bestScore && score < Infinity) {
+      matches.push(key)
+    }
+
+  }
+
+  return matches.length == 1 ? matches[0] : null
+
+}
+
+
+
 function checkContext(models, textures) {
 
   var modelList = Object.keys(models)
@@ -263,18 +377,18 @@ function checkContext(models, textures) {
       for (var j = 0; j < modeltextures.length; j++) {
 
         var textureReference = modeltextures[j]
-        var tmp = model.data.textures[textureReference].split('/')
-        var texturename = tmp[tmp.length-1] + '.png'
+        var texturePath = resolveModelTextureReference(model.data.textures, textureReference)
+        var textureKey = findTextureKey(texturePath, textures)
 
-        if (textureList.indexOf(texturename) == -1) {
-          model.contextErrors.push('Couldn\'t find texture "' + texturename + '".')
+        if (textureKey === null) {
+          model.contextErrors.push('Couldn\'t find texture "' + texturePath + '".')
         } else {
 
-          var texture = textures[texturename]
+          var texture = textures[textureKey]
           texture.used = true
 
           if (texture.errors.length > 0 || texture.contextErrors.length > 0) {
-            model.contextErrors.push('Couldn\'t load texture "' + texturename + '", the texture is invalid.')
+            model.contextErrors.push('Couldn\'t load texture "' + texturePath + '", the texture is invalid.')
           }
 
         }

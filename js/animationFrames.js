@@ -21,12 +21,11 @@ function getAnimationFrames() {
         for (var j = 0; j < textureNames.length; j++) {
 
           var textureReference = textureNames[j]
-          var tmp = model.data.textures[textureReference].split('/')
-          var texturename = tmp[tmp.length-1]
+          var texturePath = resolveModelTextureReference(model.data.textures, textureReference)
+          var textureKey = findTextureKey(texturePath, textures)
+          var texture = textures[textureKey]
 
-          var texture = textures[texturename + '.png']
-
-          modeltextures[texturename] = texture.data
+          modeltextures[textureReference] = texture.data
 
         }
 
@@ -210,8 +209,7 @@ function bundleTextures(baseModel, textures) {
         var side = sides[i]
         var face = element.faces[side]
 
-        var tmp = model.textures[face.texture.substr(1)].split('/')
-        var name = tmp[tmp.length-1]
+        var name = face.texture.charAt(0) == '#' ? face.texture.substr(1) : face.texture
 
         if (Object.keys(texturesMaps).indexOf(name) >= 0) {
 

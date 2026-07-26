@@ -32,15 +32,21 @@ This version extends the model parser, validator, and viewer with support for:
 - backward compatibility with the legacy `axis` + `angle` format;
 - inverted or negative cubes where a `from` value is greater than `to`;
 - negative coordinates and unusual geometry;
+- textures stored outside the `item/` directory, including `block/`, `entity/`,
+  and custom folders;
+- namespaced texture references such as `minecraft:block/stone`;
+- loading complete texture directories from resource packs;
 - safer validation of coordinates, rotation origins, and angles.
 
 ## Usage
 
 1. Open the [updated web version](https://espartaprojunior.github.io/animated-models/).
-2. Select your model files using the application interface.
-3. Arrange the models as animation frames.
-4. Configure the duration and timeline options.
-5. Use the export option to download the result.
+2. Use **Choose files...** to select your JSON model files.
+3. Use **Choose texture folder...** to select a texture directory or resource
+   pack. Textures do not need to be stored under `textures/item/`.
+4. Arrange the models as animation frames.
+5. Configure the duration and timeline options.
+6. Use the export option to download the result.
 
 The application is a static website hosted through GitHub Pages.
 

@@ -165,6 +165,11 @@ $(document).ready(function() {
     modal.load(this.files)
     this.value = ''
   })
+  $('#modal-folder-input').change(function(event) {
+    event.stopPropagation()
+    modal.load(this.files)
+    this.value = ''
+  })
 
   $('#export-overlay').click(function(event) {
     event.stopPropagation()
