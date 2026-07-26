@@ -106,4 +106,45 @@ assert.strictEqual(
   'indirect texture references should resolve'
 )
 
+const eliteFantasyTextures = {
+  'custom-pack/assets/elitefantasy/textures/models/sandsnake_head.png': {
+    path: 'custom-pack/assets/elitefantasy/textures/models/sandsnake_head.png',
+    errors: [],
+    contextErrors: [],
+    used: false
+  }
+}
+
+assert.strictEqual(
+  context.findTextureKey('elitefantasy:sandsnake_head', eliteFantasyTextures),
+  'custom-pack/assets/elitefantasy/textures/models/sandsnake_head.png',
+  'flat namespaced references should match textures outside item/'
+)
+
+const eliteFantasyModels = {
+  'sandsnake_head_0.json': {
+    data: {
+      textures: {
+        first: 'elitefantasy:sandsnake_head',
+        second: 'elitefantasy:sandsnake_head'
+      }
+    },
+    contextErrors: []
+  }
+}
+
+context.checkContext(eliteFantasyModels, eliteFantasyTextures)
+
+assert.deepStrictEqual(
+  Array.from(eliteFantasyModels['sandsnake_head_0.json'].contextErrors),
+  [],
+  'elitefantasy:sandsnake_head should load from a non-item texture folder'
+)
+
+assert.strictEqual(
+  eliteFantasyTextures['custom-pack/assets/elitefantasy/textures/models/sandsnake_head.png'].used,
+  true,
+  'the matching namespaced texture should be marked as used'
+)
+
 console.log('model format tests passed')

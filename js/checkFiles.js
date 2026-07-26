@@ -374,10 +374,17 @@ function checkContext(models, textures) {
 
     if (model.data.hasOwnProperty('textures')) {
       var modeltextures = Object.keys(model.data.textures)
+      var checkedTexturePaths = {}
       for (var j = 0; j < modeltextures.length; j++) {
 
         var textureReference = modeltextures[j]
         var texturePath = resolveModelTextureReference(model.data.textures, textureReference)
+        var normalizedTexturePath = normalizeTexturePath(texturePath).toLowerCase()
+
+        if (checkedTexturePaths[normalizedTexturePath])
+          continue
+
+        checkedTexturePaths[normalizedTexturePath] = true
         var textureKey = findTextureKey(texturePath, textures)
 
         if (textureKey === null) {
